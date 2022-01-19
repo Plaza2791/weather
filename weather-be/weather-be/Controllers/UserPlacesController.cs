@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using weather_be.Data.Dtos.UserPlaces;
 using weather_be.Data.Entities;
 using weather_be.Data.Repositories;
+using weather_be.Services;
 
 namespace weather_be.Controllers
 {
@@ -13,16 +14,26 @@ namespace weather_be.Controllers
     public class UserPlacesController : ControllerBase
     {
         private readonly IUserPlacesRepository _userPlacesRepository;
+        private readonly IMeteoService _meteoService;
 
-        public UserPlacesController(IUserPlacesRepository userPlacesRepository)
+        public UserPlacesController(IUserPlacesRepository userPlacesRepository, IMeteoService meteoService)
         {
             _userPlacesRepository = userPlacesRepository;
+            _meteoService = meteoService;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserPlace>>> GetAll()
         {
-            return Ok(_userPlacesRepository.GetAll().Result);
+            var places = _userPlacesRepository.GetAll().Result;
+            var placesWithTemps = places.Select(p =>
+                new UserPlaceWithTemps(
+                    p.code,
+                    p.name,
+                    p.description,
+                    _meteoService.GetForecast(p.code).Result.MaxTempIn24Hours(),
+                    _meteoService.GetForecast(p.code).Result.MinTempIn24Hours()));
+            return Ok(placesWithTemps);
         }
 
         [HttpGet("{code}")]
@@ -35,7 +46,14 @@ namespace weather_be.Controllers
                 return NotFound($"Saved place with code {code} not found");
             }
 
-            return Ok(userPlace);
+            var userPlaceWithTemps = new UserPlaceWithTemps(
+                userPlace.code,
+                userPlace.name,
+                userPlace.description,
+                _meteoService.GetForecast(userPlace.code).Result.MaxTempIn24Hours(),
+                _meteoService.GetForecast(userPlace.code).Result.MinTempIn24Hours());
+
+            return Ok(userPlaceWithTemps);
         }
 
         [HttpPost]
@@ -45,7 +63,7 @@ namespace weather_be.Controllers
 
             if (savedPlace != null)
             {
-                return BadRequest($"Place with code {userPlace.code} already exists");
+                return BadRequest(new {error = $"Vietovė su jau yra." });
             }
 
             await _userPlacesRepository.Insert(userPlace);
@@ -75,7 +93,7 @@ namespace weather_be.Controllers
                 return BadRequest(e.ValidationResult);
             }
 
-            _userPlacesRepository.Update(userPlace);
+            await _userPlacesRepository.Update(userPlace);
 
             return Ok(userPlace);
         }

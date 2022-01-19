@@ -13,10 +13,17 @@ var app = builder.Build();
 app.MapGet("/", () => "Hello World!");
 app.MapControllers();
 
+app.UseCors(x => x
+    .AllowAnyMethod()
+    .AllowAnyHeader()
+    .SetIsOriginAllowed(origin => true) // allow any origin
+    .AllowCredentials()); // allow credentials
+
 app.Run();
 
 void ConfigureServices(IServiceCollection services)
 {
+    services.AddCors();
     services.AddDbContext<WeatherContext>();
     services.AddTransient<IMeteoService, MeteoService>();
     services.AddTransient<IUserPlacesRepository, UserPlacesRepository>();

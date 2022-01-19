@@ -9,8 +9,13 @@ namespace weather_be.Data.Entities
         public string code { get; set; }
         [Required]
         public string name { get; set; }
-        //[StringLength(255, ErrorMessage = "Description can't be longer than 255 symbols")]
-        [MaxLength(255)]
+        [StringLength(255, ErrorMessage = "Aprašymas negali būti ilgesnis nei 255 simbolių")]
         public string? description { get; set; }
+        public UserPlace(string code, string name, string? description)
+        {
+            this.code = code;
+            this.name = name;
+            this.description = description;
+        }
     }
 }
