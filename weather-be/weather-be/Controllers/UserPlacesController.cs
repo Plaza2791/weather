@@ -1,124 +1,109 @@
-﻿using System.Collections;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using weather_be.Data.Dtos.UserPlaces;
 using weather_be.Data.Entities;
 using weather_be.Data.Repositories;
 using weather_be.Services;
 
-namespace weather_be.Controllers
+namespace weather_be.Controllers;
+
+[ApiController]
+[Route("userPlaces")]
+public class UserPlacesController : ControllerBase
 {
-    [ApiController]
-    [Route("userPlaces")]
-    public class UserPlacesController : ControllerBase
+    private readonly IMeteoService _meteoService;
+    private readonly IUserPlacesRepository _userPlacesRepository;
+
+    public UserPlacesController(IUserPlacesRepository userPlacesRepository, IMeteoService meteoService)
     {
-        private readonly IUserPlacesRepository _userPlacesRepository;
-        private readonly IMeteoService _meteoService;
+        _userPlacesRepository = userPlacesRepository;
+        _meteoService = meteoService;
+    }
 
-        public UserPlacesController(IUserPlacesRepository userPlacesRepository, IMeteoService meteoService)
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<UserPlace>>> GetAll()
+    {
+        var places = _userPlacesRepository.GetAll().Result;
+        var placesWithTemps = places.Select(p =>
+            new UserPlaceWithTemps(
+                p.code,
+                p.name,
+                p.description,
+                _meteoService.GetForecast(p.code).Result.MaxTempIn24Hours(),
+                _meteoService.GetForecast(p.code).Result.MinTempIn24Hours()));
+        return Ok(placesWithTemps);
+    }
+
+    [HttpGet("{code}")]
+    public async Task<ActionResult<UserPlace>> Get(string code)
+    {
+        var userPlace = await _userPlacesRepository.Get(code);
+
+        if (userPlace == null) return NotFound($"Saved place with code {code} not found");
+
+        var userPlaceWithTemps = new UserPlaceWithTemps(
+            userPlace.code,
+            userPlace.name,
+            userPlace.description,
+            _meteoService.GetForecast(userPlace.code).Result.MaxTempIn24Hours(),
+            _meteoService.GetForecast(userPlace.code).Result.MinTempIn24Hours());
+
+        return Ok(userPlaceWithTemps);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<UserPlace>> Post(UserPlace userPlace)
+    {
+        var savedPlace = await _userPlacesRepository.Get(userPlace.code);
+
+        if (savedPlace != null) return BadRequest(new {error = "Vietovė su jau yra."});
+
+        await _userPlacesRepository.Insert(userPlace);
+
+        return Created($"userPlaces/{userPlace.code}", userPlace);
+    }
+
+    [HttpPut("{code}")]
+    public async Task<ActionResult<UserPlace>> Put(string code, UpdateUserPlaceDto userPlaceDto)
+    {
+        var userPlace = await _userPlacesRepository.Get(code);
+
+        if (userPlace == null) return NotFound($"Saved place with code {code} not found");
+
+        userPlace.description = userPlaceDto.description;
+
+        try
         {
-            _userPlacesRepository = userPlacesRepository;
-            _meteoService = meteoService;
+            var validationContext = new ValidationContext(userPlace);
+            Validator.ValidateObject(userPlace, validationContext, true);
+        }
+        catch (ValidationException e)
+        {
+            return BadRequest(e.ValidationResult);
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<UserPlace>>> GetAll()
-        {
-            var places = _userPlacesRepository.GetAll().Result;
-            var placesWithTemps = places.Select(p =>
-                new UserPlaceWithTemps(
-                    p.code,
-                    p.name,
-                    p.description,
-                    _meteoService.GetForecast(p.code).Result.MaxTempIn24Hours(),
-                    _meteoService.GetForecast(p.code).Result.MinTempIn24Hours()));
-            return Ok(placesWithTemps);
-        }
+        await _userPlacesRepository.Update(userPlace);
 
-        [HttpGet("{code}")]
-        public async Task<ActionResult<UserPlace>> Get(string code)
-        {
-            var userPlace = await _userPlacesRepository.Get(code);
+        return Ok(userPlace);
+    }
 
-            if (userPlace == null)
-            {
-                return NotFound($"Saved place with code {code} not found");
-            }
+    [HttpDelete("{code}")]
+    public async Task<ActionResult> Delete(string code)
+    {
+        var userPlace = await _userPlacesRepository.Get(code);
 
-            var userPlaceWithTemps = new UserPlaceWithTemps(
-                userPlace.code,
-                userPlace.name,
-                userPlace.description,
-                _meteoService.GetForecast(userPlace.code).Result.MaxTempIn24Hours(),
-                _meteoService.GetForecast(userPlace.code).Result.MinTempIn24Hours());
+        if (userPlace == null) return NotFound($"Saved place with code {code} not found");
 
-            return Ok(userPlaceWithTemps);
-        }
+        await _userPlacesRepository.Delete(userPlace);
 
-        [HttpPost]
-        public async Task<ActionResult<UserPlace>> Post(UserPlace userPlace)
-        {
-            var savedPlace = await _userPlacesRepository.Get(userPlace.code);
+        return NoContent();
+    }
 
-            if (savedPlace != null)
-            {
-                return BadRequest(new {error = $"Vietovė su jau yra." });
-            }
+    [HttpDelete]
+    public async Task<ActionResult> Delete()
+    {
+        await _userPlacesRepository.DeleteAll();
 
-            await _userPlacesRepository.Insert(userPlace);
-
-            return Created($"userPlaces/{userPlace.code}", userPlace);
-        }
-
-        [HttpPut("{code}")]
-        public async Task<ActionResult<UserPlace>> Put(string code, UpdateUserPlaceDto userPlaceDto)
-        {
-            var userPlace = await _userPlacesRepository.Get(code);
-
-            if (userPlace == null)
-            {
-                return NotFound($"Saved place with code {code} not found");
-            }
-
-            userPlace.description = userPlaceDto.description;
-
-            try
-            {
-                var validationContext = new ValidationContext(userPlace);
-                Validator.ValidateObject(userPlace, validationContext, validateAllProperties: true);
-            }
-            catch (ValidationException e)
-            {
-                return BadRequest(e.ValidationResult);
-            }
-
-            await _userPlacesRepository.Update(userPlace);
-
-            return Ok(userPlace);
-        }
-
-        [HttpDelete("{code}")]
-        public async Task<ActionResult> Delete(string code)
-        {
-            var userPlace = await _userPlacesRepository.Get(code);
-
-            if (userPlace == null)
-            {
-                return NotFound($"Saved place with code {code} not found");
-            }
-
-            await _userPlacesRepository.Delete(userPlace);
-
-            return NoContent();
-        }
-
-        [HttpDelete]
-        public async Task<ActionResult> Delete()
-        {
-            await _userPlacesRepository.DeleteAll();
-
-            return NoContent();
-        }
+        return NoContent();
     }
 }

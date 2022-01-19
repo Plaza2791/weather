@@ -1,8 +1,7 @@
-﻿namespace weather_be.Data.Entities.Meteo
+﻿namespace weather_be.Data.Entities.Meteo;
+
+public class Coordinates
 {
-    public class Coordinates
-    {
-        public double latitude { get; set; }
-        public double longitude { get; set; }
-    }
+    public double latitude { get; set; }
+    public double longitude { get; set; }
 }

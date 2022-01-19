@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
 using weather_be.Data;
 using weather_be.Data.Repositories;
 using weather_be.Services;

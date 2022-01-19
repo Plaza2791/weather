@@ -4,48 +4,47 @@ using System.Text.Json.Serialization;
 using weather_be.Data.Entities.Meteo;
 using weather_be.Models.Meteo;
 
-namespace weather_be.Services
+namespace weather_be.Services;
+
+public class MeteoService : IMeteoService
 {
-    public class MeteoService : IMeteoService
+    private readonly HttpClient _client = new();
+    private readonly JsonSerializerOptions _options = new();
+
+    public MeteoService()
     {
-        private readonly HttpClient _client = new HttpClient();
-        JsonSerializerOptions _options = new JsonSerializerOptions();
+        _options.Converters.Add(new DateTimeConverterUsingDateTimeParse());
+    }
 
-        public MeteoService()
+    public async Task<List<Place>> GetPlaces()
+    {
+        var res = await _client.GetStringAsync("https://api.meteo.lt/v1/places");
+
+        var places = JsonSerializer.Deserialize<List<Place>>(res);
+
+        return places;
+    }
+
+    public async Task<Forecast> GetForecast(string code)
+    {
+        var res = await _client.GetStringAsync($"https://api.meteo.lt/v1/places/{code}/forecasts/long-term");
+
+        var forecast = JsonSerializer.Deserialize<Forecast>(res, _options);
+
+        return forecast;
+    }
+
+    public class DateTimeConverterUsingDateTimeParse : JsonConverter<DateTime>
+    {
+        public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            _options.Converters.Add(new DateTimeConverterUsingDateTimeParse());
+            Debug.Assert(typeToConvert == typeof(DateTime));
+            return DateTime.Parse(reader.GetString());
         }
 
-        public async Task<List<Place>> GetPlaces()
+        public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         {
-            var res = await _client.GetStringAsync("https://api.meteo.lt/v1/places");
-
-            List<Place> places = JsonSerializer.Deserialize<List<Place>>(res);
-
-            return places;
-        }
-
-        public async Task<Forecast> GetForecast(string code)
-        {
-            var res = await _client.GetStringAsync($"https://api.meteo.lt/v1/places/{code}/forecasts/long-term");
-            
-            var forecast = JsonSerializer.Deserialize<Forecast>(res, _options);
-
-            return forecast;
-        }
-
-        public class DateTimeConverterUsingDateTimeParse : JsonConverter<DateTime>
-        {
-            public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-            {
-                Debug.Assert(typeToConvert == typeof(DateTime));
-                return DateTime.Parse(reader.GetString());
-            }
-
-            public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
-            {
-                writer.WriteStringValue(value.ToString());
-            }
+            writer.WriteStringValue(value.ToString());
         }
     }
 }
