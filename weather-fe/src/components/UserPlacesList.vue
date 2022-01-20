@@ -40,7 +40,8 @@
               <i class="bi bi-trash-fill"/>
             </button>
 
-            <div :id="`delete${userPlace.code}`" :aria-labelledby="`delete${userPlace.code}`" aria-hidden="true" class="modal fade"
+            <div :id="`delete${userPlace.code}`" :aria-labelledby="`delete${userPlace.code}`" aria-hidden="true"
+                 class="modal fade"
                  role="dialog" tabindex="-1">
               <div class="modal-dialog" role="document">
                 <div class="modal-content">

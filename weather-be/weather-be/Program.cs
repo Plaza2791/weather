@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 using weather_be.Data;
 using weather_be.Data.Repositories;
 using weather_be.Services;
@@ -8,6 +9,14 @@ var builder = WebApplication.CreateBuilder(args);
 ConfigureServices(builder.Services);
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    var context = services.GetRequiredService<WeatherContext>();
+    context.Database.Migrate();
+}
 
 app.MapGet("/", () => "Hello World!");
 app.MapControllers();

@@ -9,6 +9,7 @@ public class WeatherContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseNpgsql("Host=localhost;Database=weather;Username=postgres;Password=123");
+        var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+        optionsBuilder.UseNpgsql(connectionString);
     }
 }
